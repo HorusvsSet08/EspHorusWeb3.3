@@ -2,12 +2,12 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Visor STL con Three.js Módulos</title>
+  <title>Visor STL GitHub</title>
   <style>
     body { margin: 0; }
     #visor {
-      width: 600px;
-      height: 400px;
+      width: 800px;
+      height: 600px;
       display: block;
       margin: 0 auto;
     }
@@ -21,24 +21,31 @@
     import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/loaders/STLLoader.js';
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 600 / 400, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('visor'), antialias: true });
-    renderer.setSize(600, 400);
+    renderer.setSize(800, 600);
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(1, 1, 1).normalize();
     scene.add(light);
 
     const loader = new STLLoader();
-    loader.load('../stl/1.stl', function (geometry) {
-      const material = new THREE.MeshPhongMaterial({ color: 0x606060 });
-      const mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-      mesh.rotation.x = -0.5 * Math.PI;
+    loader.load(
+      'https://raw.githubusercontent.com/HorusvsSet08/EspHorusWeb3.3/main/stl/1.stl',
+      (geometry) => {
+        const material = new THREE.MeshPhongMaterial({ color: 0x606060 });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+        mesh.rotation.x = -0.5 * Math.PI;
 
-      camera.position.z = 100;
-      animate();
-    });
+        camera.position.z = 100;
+        animate();
+      },
+      undefined,
+      (err) => {
+        console.error('Error cargando STL:', err);
+      }
+    );
 
     function animate() {
       requestAnimationFrame(animate);
