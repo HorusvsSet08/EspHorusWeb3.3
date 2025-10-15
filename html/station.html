@@ -5,16 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Datos en Vivo - Horus</title>
   <link rel="stylesheet" href="../css/style.css" />
-
-  <!-- React + Three.js -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/@react-three/fiber@8.15.12/dist/react-three-fiber.umd.js"></script>
-  <script src="https://unpkg.com/@react-three/drei@9.88.8/dist/drei.umd.js"></script>
-
   <style>
-    /* 🎨 Estilos del visor */
+    /* 🎨 Estilos para el visor STL */
     .model-viewer-container {
       position: relative;
       width: 80vw;
@@ -26,7 +18,7 @@
       background: #000;
     }
 
-    button.screenshot-btn {
+    .screenshot-btn {
       position: absolute;
       right: 16px;
       top: 16px;
@@ -41,12 +33,40 @@
       transition: background 0.2s;
     }
 
-    button.screenshot-btn:hover {
+    .screenshot-btn:hover {
       background: rgba(255, 255, 255, 0.3);
+    }
+
+    .connection-status-small {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      width: fit-content;
+      margin: 20px auto;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: orange;
+      display: inline-block;
+    }
+
+    .status-text {
+      font-weight: bold;
+    }
+
+    .last-update {
+      font-size: 0.8em;
+      opacity: 0.8;
     }
   </style>
 </head>
-
 <body class="light-mode">
   <nav class="nav">
     <div class="nav-container">
@@ -99,159 +119,93 @@
 
   <div class="container">
     <header>
-      <h1>🛰️ Visor 3D - Estación Horus</h1>
-      <p class="dashboard-description">Visualiza el modelo 3D de la estación o componentes meteorológicos (STL / GLB / GLTF).</p>
+      <h1>📡 Visor 3D - Modelo Horus</h1>
+      <p class="dashboard-description">Visualización 3D del modelo STL en tiempo real</p>
     </header>
 
-    <!-- 👇 AQUÍ VA EL VISOR -->
-    <div id="viewer-root"></div>
+    <!-- 🔹 VISOR STL AQUÍ -->
+    <div class="model-viewer-container" id="stl-container">
+      <button class="screenshot-btn" id="captureBtn">📸 Captura</button>
+    </div>
 
     <footer>
       <p>Estación Horus • Diseño y desarrollo por <strong>Tu Nombre</strong></p>
+      <p class="disclaimer">Modelo STL cargado desde carpeta local <code>/stl/1.stl</code></p>
     </footer>
   </div>
 
-  <!-- 🧠 STLLoader compatible para navegador -->
-  <script>
-    class STLLoader extends THREE.Loader {
-      constructor(manager) { super(manager); }
-      load(url, onLoad, onProgress, onError) {
-        const loader = new THREE.FileLoader(this.manager);
-        loader.setPath(this.path);
-        loader.setResponseType('arraybuffer');
-        loader.load(url, (data) => onLoad(this.parse(data)), onProgress, onError);
-      }
-      parse(data) {
-        const isBinary = (data) => {
-          const str = new TextDecoder().decode(new Uint8Array(data, 0, 80));
-          return str.indexOf("solid") !== 0;
-        };
-        if (isBinary(data)) {
-          const reader = new DataView(data);
-          const faces = reader.getUint32(80, true);
-          let offset = 84;
-          const geo = new THREE.BufferGeometry();
-          const vertices = [];
-          const normals = [];
-          for (let i = 0; i < faces; i++) {
-            const normalX = reader.getFloat32(offset, true);
-            const normalY = reader.getFloat32(offset + 4, true);
-            const normalZ = reader.getFloat32(offset + 8, true);
-            offset += 12;
-            for (let j = 0; j < 3; j++) {
-              vertices.push(
-                reader.getFloat32(offset, true),
-                reader.getFloat32(offset + 4, true),
-                reader.getFloat32(offset + 8, true)
-              );
-              normals.push(normalX, normalY, normalZ);
-              offset += 12;
-            }
-            offset += 2;
-          }
-          geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-          geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-          return geo;
-        } else {
-          const text = new TextDecoder().decode(data);
-          const patternFace = /facet([\s\S]*?)endfacet/g;
-          const geo = new THREE.BufferGeometry();
-          const vertices = [];
-          const normals = [];
-          let result;
-          while ((result = patternFace.exec(text)) !== null) {
-            const normalMatch = /normal([\s\S]*?)outer/.exec(result[1]);
-            const vertexMatch = [...result[1].matchAll(/vertex\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/g)];
-            if (normalMatch && vertexMatch.length === 3) {
-              const n = normalMatch[1].trim().split(/\s+/).map(Number);
-              for (const v of vertexMatch) {
-                vertices.push(parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3]));
-                normals.push(n[0], n[1], n[2]);
-              }
-            }
-          }
-          geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-          geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-          return geo;
-        }
-      }
-    }
-  </script>
+  <!-- 🧠 SCRIPT DEL VISOR STL -->
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+    import { OrbitControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+    import { STLLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/STLLoader.js";
 
-  <!-- 📦 Script del visor 3D -->
-  <script type="text/babel">
-    const { Canvas, useLoader } = ReactThreeFiber;
-    const { OrbitControls, useGLTF, Environment, ContactShadows, Html } = drei;
+    const container = document.getElementById("stl-container");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a0a);
 
-    function Loader() {
-      return (
-        <Html center>
-          <div style={{ color: 'white' }}>Cargando modelo...</div>
-        </Html>
-      );
-    }
+    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 0.3, 2);
 
-    function Model({ url }) {
-      const ext = url.split('.').pop().toLowerCase();
-      if (ext === 'glb' || ext === 'gltf') {
-        const gltf = useGLTF(url);
-        return <primitive object={gltf.scene} dispose={null} />;
-      } else if (ext === 'stl') {
-        const geom = useLoader(STLLoader, url);
-        return (
-          <mesh geometry={geom} rotation={[-Math.PI / 2, 0, 0]}>
-            <meshStandardMaterial color="#9ecfff" metalness={0.3} roughness={0.6} />
-          </mesh>
-        );
-      } else {
-        return (
-          <Html center>
-            <div style={{ color: 'red' }}>Formato no soportado: {ext}</div>
-          </Html>
-        );
-      }
-    }
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
 
-    function Viewer3D({ url }) {
-      const capture = () => {
-        const canvas = document.querySelector('canvas');
-        const link = document.createElement('a');
-        link.download = 'screenshot.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      };
+    // 💡 Luces
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(3, 3, 3);
+    scene.add(dirLight);
 
-      return (
-        <div className="model-viewer-container">
-          <button className="screenshot-btn" onClick={capture}>📸 Captura</button>
-          <Canvas
-            shadows
-            camera={{ position: [0, 0.5, 3], fov: 50 }}
-            gl={{ preserveDrawingBuffer: true }}
-          >
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[4, 4, 4]} intensity={1} castShadow />
-            <Suspense fallback={<Loader />}>
-              <Model url={url} />
-              <Environment preset="city" />
-            </Suspense>
-            <ContactShadows position={[0, -0.8, 0]} opacity={0.4} scale={10} blur={2} />
-            <OrbitControls enablePan={false} />
-          </Canvas>
-        </div>
-      );
-    }
+    // 🎮 Control de cámara
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
 
-    // 🔹 Render principal
-    ReactDOM.createRoot(document.getElementById('viewer-root')).render(
-      <React.Suspense fallback={<div style={{ color: "white" }}>Cargando...</div>}>
-        {/* Cambia esta URL a tu modelo STL o GLB */}
-        <Viewer3D url="https://threejs.org/examples/models/stl/ascii/slotted_disk.stl" />
-      </React.Suspense>
+    // 📦 Cargar modelo STL (ruta relativa)
+    const loader = new STLLoader();
+    const modelPath = "../../stl/1.stl"; // 👈 el modelo está al mismo nivel que /html/
+    loader.load(
+      modelPath,
+      (geometry) => {
+        const material = new THREE.MeshStandardMaterial({ color: 0x87ceeb, metalness: 0.2, roughness: 0.5 });
+        const mesh = new THREE.Mesh(geometry, material);
+        geometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        geometry.boundingBox.getCenter(center);
+        mesh.position.sub(center);
+        scene.add(mesh);
+      },
+      (xhr) => console.log(`Cargando modelo: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`),
+      (error) => console.error("❌ Error al cargar STL:", error)
     );
+
+    // 📸 Captura de pantalla
+    document.getElementById("captureBtn").addEventListener("click", () => {
+      const link = document.createElement("a");
+      link.download = "captura_modelo.png";
+      link.href = renderer.domElement.toDataURL("image/png");
+      link.click();
+    });
+
+    // 🔄 Animación
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // 📏 Responsividad
+    window.addEventListener("resize", () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
   </script>
 
-  <!-- Tu script original -->
+  <!-- Tema y efectos generales -->
   <script src="../js/main.js"></script>
 </body>
 </html>
