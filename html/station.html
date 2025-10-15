@@ -2,26 +2,24 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Visor STL con Three.js</title>
+  <title>Visor STL con Three.js Módulos</title>
   <style>
     body { margin: 0; }
     #visor {
       width: 600px;
       height: 400px;
-      margin: 0 auto;
       display: block;
+      margin: 0 auto;
     }
   </style>
 </head>
 <body>
   <canvas id="visor"></canvas>
 
-  <!-- Three.js -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
-  <!-- Loader STL -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/examples/js/loaders/STLLoader.js"></script>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
+    import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/loaders/STLLoader.js';
 
-  <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, 600 / 400, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('visor'), antialias: true });
@@ -31,12 +29,12 @@
     light.position.set(1, 1, 1).normalize();
     scene.add(light);
 
-    const loader = new THREE.STLLoader();
+    const loader = new STLLoader();
     loader.load('../stl/1.stl', function (geometry) {
       const material = new THREE.MeshPhongMaterial({ color: 0x606060 });
       const mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
-      mesh.rotation.x = -0.5 * Math.PI; // Ajustar orientación si es necesario
+      mesh.rotation.x = -0.5 * Math.PI;
 
       camera.position.z = 100;
       animate();
@@ -44,7 +42,7 @@
 
     function animate() {
       requestAnimationFrame(animate);
-      scene.rotation.y += 0.01; // rotar modelo
+      scene.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
   </script>
