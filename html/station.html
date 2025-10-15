@@ -1,121 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Estación Horus - Datos en Vivo</title>
-
-<!-- CSS externo -->
-<link rel="stylesheet" href="../css/main.css" />
-
-<style>
-  /* Aquí un pequeño ajuste o añade lo que falte */
-  #model-viewer-container {
-    width: 100%;
-    height: 600px;
-    background-color: black;
-    margin: 1em auto;
-    border-radius: 10px;
-    position: relative;
-  }
-  #model-viewer-container button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(255 255 255 / 0.2);
-    border: none;
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visor 3D</title>
+  <!-- Importar la librería model-viewer -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    #visor3d {
+      width: 400px;
+      height: 400px;
+      border: 1px solid #ccc;
+      margin: 20px auto;
+    }
+  </style>
 </head>
 <body>
-<nav class="nav">
-  <a href="../index.html" class="nav-btn">🏠 Inicio</a>
-  <a href="mqtt.html" class="nav-btn active">📡 Datos en Vivo</a>
-  <a href="analisis.html" class="nav-btn">📊 Análisis</a>
-  <a href="chatbot.html" class="nav-btn">🤖 Chatbot</a>
-</nav>
 
-<div id="model-viewer-container"></div>
-
-<!-- Librerías desde CDN -->
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
-<script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-
-<script>
-  const container = document.getElementById("model-viewer-container");
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
-
-  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
-  camera.position.set(0, 0.3, 1.2);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  dirLight.position.set(2, 2, 3);
-  scene.add(dirLight);
-
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  const loader = new THREE.STLLoader();
-  loader.load(
-    "../stl/1.stl",
-    function (geometry) {
-      const material = new THREE.MeshStandardMaterial({ color: 0x2194ce, metalness: 0.2, roughness: 0.4 });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      geometry.computeBoundingBox();
-      const center = new THREE.Vector3();
-      geometry.boundingBox.getCenter(center).negate();
-      geometry.translate(center.x, center.y, center.z);
-
-      scene.add(mesh);
-    },
-    function (xhr) {
-      console.log("Cargando STL: " + (xhr.loaded / xhr.total * 100).toFixed(2) + "%");
-    },
-    function (error) {
-      console.error("Error cargando STL:", error);
-    }
-  );
-
-  window.addEventListener("resize", () => {
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-  });
-
-  const button = document.createElement("button");
-  button.textContent = "📸 Capturar";
-  button.onclick = () => {
-    const img = renderer.domElement.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = "captura.png";
-    link.href = img;
-    link.click();
-  };
-  container.appendChild(button);
-
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animate();
-</script>
+  <div id="visor3d">
+    <model-viewer src="../stl/1.stl" alt="Modelo 3D" auto-rotate camera-controls style="width:100%; height:100%;"></model-viewer>
+  </div>
 
 </body>
 </html>
